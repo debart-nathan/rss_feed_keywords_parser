@@ -19,18 +19,19 @@ def write_subject_note(subject, sub_subject, source_title, categorized_entries, 
     file_path = os.path.join(sub_folder, f"{safe_title}.md")
     archive_path = os.path.join(sub_folder, f"{safe_title}_archive.md")
 
-    existing_keys = extract_existing_entries(file_path)
+    existing_guids = {g.strip().lower() for g in extract_existing_entries(file_path)}
+
 
     filtered_by_category = {}
     for category, entries in categorized_entries.items():
         filtered = [
             e for e in entries
-            if (e.get('title', 'No title'), e.get('published', 'Unknown date')) not in existing_keys
+            if e.get('guid', '').strip().lower() not in existing_guids
         ]
         if filtered:
             filtered_by_category[category] = filtered
 
-    all_entries = [e for entries in categorized_entries.values() for e in entries]
+    all_entries = [e for entries in categorized_entries.values() for e in entries if e.get('guid')]
     archive_removed_entries(file_path, archive_path, all_entries)
     write_feed_note(file_path, source_title, subject, sub_subject, filtered_by_category, output_dir)
 

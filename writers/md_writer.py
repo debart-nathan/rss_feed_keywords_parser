@@ -11,9 +11,9 @@ MAX_FILENAME_LEN = 100  # Safe filename length for Windows
 
 def slugify(text):
     text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii")  # remove accents
-    text = re.sub(r"[^\w\s-]", "", text)  # remove non-word characters
-    text = re.sub(r"[\s/]+", "_", text)   # replace spaces and slashes with underscores
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s/]+", "_", text)
     return text.strip("_")
 
 def safe_filename(text):
@@ -84,12 +84,11 @@ archive: [[{archive_name}]]
             # Table of Contents
             f.write("## 📑 Table of Contents\n\n")
             for category, entries in categorized_entries.items():
-                f.write(f"### {category}\n")
+                f.write(f"### [{category}](#{anchor_slug(category)})\n")
                 for entry in entries:
-                    guid = entry.get('guid', '').strip()
+                    guid = entry.get('guid', '').strip().lower()
                     if guid:
                         f.write(f"- 🆔 `{guid}`\n")
-
                 f.write("\n")
             f.write("---\n\n")
 
@@ -103,7 +102,7 @@ archive: [[{archive_name}]]
                     published = entry.get('published', 'Unknown date')
                     summary = html.unescape(entry.get('summary', '')).strip()
                     author_field = entry.get('author', '')
-                    guid = entry.get('guid', '')
+                    guid = entry.get('guid', '').strip().lower()
 
                     f.write(f"### [{title}]({safe_title}.md)\n")
                     f.write(f"- 📅 **Published:** {published}\n")

@@ -13,24 +13,23 @@ def extract_existing_entries(file_path):
         logging.error(f"Failed to read {file_path}: {e}")
         return guids
 
-    toc_section = False
+    in_toc = False
 
     for line in lines:
         stripped = line.strip()
 
-        # Skip TOC section
+        # Detect start of TOC
         if stripped.startswith("## 📑 Table of Contents"):
-            toc_section = True
+            in_toc = True
             continue
-        if toc_section and stripped == "---":
-            toc_section = False
-            continue
-        if toc_section:
+        # Detect end of TOC
+        if in_toc and stripped == "---":
+            in_toc = False
             continue
 
-        # Extract GUIDs from entry body
-        if stripped.startswith("- 🆔 `") and stripped.endswith("`"):
-            guid = stripped.split("`")[1].strip()
+        # Extract GUIDs only from TOC
+        if in_toc and stripped.startswith("- 🆔 `") and stripped.endswith("`"):
+            guid = stripped.split("`")[1].strip().lower()
             if guid:
                 guids.add(guid)
 
