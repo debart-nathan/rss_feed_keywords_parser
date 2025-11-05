@@ -66,13 +66,14 @@ def main():
                         }
                     }
                 }
+            max_items=max_items if max_items is not None else 5
 
             categorized_entries = dispatch_parser(
                 subject,
                 feed,
                 sub_subject=sub_subject,
                 source_title=source_title,
-                max_items=max_items or 5,
+                max_items=max_items,
                 filter_tree=filter_tree,
                 verbose=args.vvv
             )

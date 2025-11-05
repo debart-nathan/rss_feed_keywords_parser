@@ -10,7 +10,6 @@ class FeedParser:
         self.verbose = verbose
 
     def match_filter_tree(self, entry, node):
-        # Treat empty node as passthrough
         if not node or (not node.get("keyword") and not node.get("children")):
             return True
 
@@ -25,34 +24,56 @@ class FeedParser:
 
         content = f"{title} {summary}".lower()
 
-        if "keyword" in node:
+        # Evaluate keyword match if present
+        keyword_result = True
+        if "keyword" in node and node["keyword"]:
             keyword = str(node["keyword"]).lower()
-            if self.verbose:
-                print(f"[MATCH] Keyword: {keyword} → {keyword in content}")
-            return keyword in content
+            keyword_result = keyword in content
+            if self.verbose and keyword_result:
+                print(f"[MATCH] Keyword: {keyword} → {keyword_result}")
 
-        logic = node.get("logic", "or").lower()
+        # Evaluate children if present
+        children_result = True
         children = node.get("children", [])
-        results = [self.match_filter_tree(entry, child) for child in children]
-        if self.verbose:
-            print(f"[LOGIC] {logic} → {results}")
-        return all(results) if logic == "and" else any(results)
+        if children:
+            logic = node.get("logic", "or").lower()
+            child_results = [self.match_filter_tree(entry, child) for child in children]
+            if self.verbose:
+                print(f"[LOGIC] {logic.upper()} → {child_results}")
+            if logic == "and":
+                children_result = all(child_results)
+            elif logic == "not":
+                children_result = not any(child_results)
+            else:  # default to "or"
+                children_result = any(child_results)
+
+        # Combine keyword and children results
+        return keyword_result and children_result
 
     def parse(self):
         feed = feedparser.parse(self.feed_url)
+        if feed.bozo:
+            if self.verbose:
+                print(f"[ERROR] Failed to parse feed: {feed.bozo_exception}")
+            return []
+
         filtered_entries = []
+        seen_guids = set()
         item_count = 0
 
         for entry in feed.entries:
             if self.verbose:
                 print(f"[ENTRY] {entry.get('id')}")
 
-            # Only apply filtering if filter_tree is a non-empty dict
             if isinstance(self.filter_tree, dict) and self.filter_tree:
-                filter_result = self.match_filter_tree(entry, self.filter_tree)
-                if self.verbose:
-                    print(f"[FILTER] Result: {filter_result}")
-                if not filter_result:
+                # If the tree is wrapped under a named key (e.g., "Passthrough" or "filters"), unwrap it
+                if "filters" in self.filter_tree:
+                    filter_node = self.filter_tree["filters"]
+                else:
+                    # Assume single-key wrapper (e.g., {"Passthrough": {"filters": {...}}})
+                    _, wrapper = next(iter(self.filter_tree.items()))
+                    filter_node = wrapper.get("filters", {})
+                if not self.match_filter_tree(entry, filter_node):
                     continue
 
             title = entry.get('title', '') or entry.get('title_detail', {}).get('value', '')
@@ -80,6 +101,10 @@ class FeedParser:
             author = entry.get('author', '') or entry.get('author_detail', {}).get('name', '')
             guid = entry.get('id', '') or entry.get('guid', '') or link
 
+            if guid in seen_guids:
+                continue
+            seen_guids.add(guid)
+
             parsed_entry = {
                 'title': title,
                 'link': link,
@@ -94,5 +119,8 @@ class FeedParser:
             item_count += 1
             if item_count >= self.max_items:
                 break
+
+        if self.verbose and item_count < self.max_items:
+            print(f"[INFO] Only {item_count} entries found (less than max_items={self.max_items})")
 
         return filtered_entries
