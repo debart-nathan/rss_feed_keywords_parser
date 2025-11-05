@@ -1,0 +1,26 @@
+feeds:
+  <subject>:                      # e.g., Drupal, ai-gen
+    filters:                     # Optional: filtering logic for the subject
+      logic: "or" | "and"
+      children:
+        - keyword: <term>
+        - logic: "not"
+          children:
+            - keyword: <excluded term>
+
+    max_feeds: <number>          # Optional: limit on number of feeds to process
+
+    feeds:
+      <sub_subject>:             # e.g., Announcements, Scientific Paper
+        - title: <feed title>
+          url: <feed URL>
+
+        categories:              # Optional: used for sub_subjects like Scientific Paper
+          <category>:            # e.g., Architectural Evolution
+            filters:
+              logic: "and" | "or"
+              children:
+                - keyword: <term>
+                - logic: "not"
+                  children:
+                    - keyword: <excluded term>
