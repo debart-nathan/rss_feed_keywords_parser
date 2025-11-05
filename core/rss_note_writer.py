@@ -33,7 +33,7 @@ def write_subject_note(subject, sub_subject, source_title, categorized_entries, 
 
     all_entries = [e for entries in categorized_entries.values() for e in entries if e.get('guid')]
     archive_removed_entries(file_path, archive_path, all_entries)
-    write_feed_note(file_path, source_title, subject, sub_subject, filtered_by_category, output_dir)
+    write_feed_note(file_path, source_title, subject, sub_subject, categorized_entries, output_dir)
 
     sub_index_path = os.path.join(sub_folder, f"{sub_subject or 'General'}.md")
     sub_index_entries = [f"- [{source_title}]({safe_title}.md)\n"]
