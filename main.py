@@ -1,6 +1,6 @@
 from core.yaml_loader import load_feeds
 from core.dispatcher import dispatch_parser
-from core.rss_note_writer import write_subject_note
+from core.rss_note_writer import RssNoteRouter   # import the router class now
 import argparse
 
 def parse_args():
@@ -8,6 +8,13 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--group", help="Target a specific group from feeds.yml")
     group.add_argument("--all", action="store_true", help="Process all groups in feeds.yml")
+
+    parser.add_argument("--mode", choices=["standard", "obsidian"], default="standard",
+                        help="Choose output mode: standard Markdown or Obsidian Markdown")
+
+    parser.add_argument("--base-dir", default="vaultRSS",
+                        help="Relative base directory for destination notes (default: vaultRSS)")
+
     parser.add_argument("-vvv", action="store_true", help="Enable verbose debug output")
     return parser.parse_args()
 
@@ -38,6 +45,11 @@ def main():
     args = parse_args()
     feed_tree = load_feeds("feeds.yml")
 
+    # instantiate the router once with chosen mode
+    
+    writer = RssNoteRouter(output_dir=args.base_dir, mode=args.mode)
+
+
     groups_to_process = []
     if args.all:
         groups_to_process = list(feed_tree.keys())
@@ -66,7 +78,7 @@ def main():
                         }
                     }
                 }
-            max_items=max_items if max_items is not None else 5
+            max_items = max_items if max_items is not None else 5
 
             categorized_entries = dispatch_parser(
                 subject,
@@ -77,7 +89,14 @@ def main():
                 filter_tree=filter_tree,
                 verbose=args.vvv
             )
-            write_subject_note(subject, sub_subject, source_title, categorized_entries, output_dir="vaultRSS")
+
+            # delegate to the router
+            writer.write_subject_note(
+                subject,
+                sub_subject,
+                source_title,
+                categorized_entries
+            )
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,8 @@
 import os
 import logging
-from parsers.md_parsers.parser import extract_existing_entries
-from archivers.archiver import archive_removed_entries
-from writers.md_writer import write_feed_note
-from .indexer import update_index
+from writers.md_writer import MarkdownWriter
+from writers.obsidian_markdown_writer import ObsidianMarkdownWriter
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -11,37 +10,20 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-def write_subject_note(subject, sub_subject, source_title, categorized_entries, output_dir="vault"):
-    sub_folder = os.path.join(output_dir, subject, sub_subject or "General")
-    os.makedirs(sub_folder, exist_ok=True)
-
-    safe_title = source_title.replace(" ", "_").replace("/", "_")
-    file_path = os.path.join(sub_folder, f"{safe_title}.md")
-    archive_path = os.path.join(sub_folder, f"{safe_title}_archive.md")
-
-    existing_guids = {g.strip().lower() for g in extract_existing_entries(file_path)}
 
 
-    filtered_by_category = {}
-    for category, entries in categorized_entries.items():
-        filtered = [
-            e for e in entries
-            if e.get('guid', '').strip().lower() not in existing_guids
-        ]
-        if filtered:
-            filtered_by_category[category] = filtered
+class RssNoteRouter:
+    def __init__(self, output_dir="vault", mode="standard"):
+        self.output_dir = output_dir
+        self.mode = mode
 
-    all_entries = [e for entries in categorized_entries.values() for e in entries if e.get('guid')]
-    archive_removed_entries(file_path, archive_path, all_entries)
-    write_feed_note(file_path, source_title, subject, sub_subject, categorized_entries, output_dir)
+        if mode == "standard":
+            self.writer = MarkdownWriter(output_dir=output_dir)
+        elif mode == "obsidian":
+            self.writer = ObsidianMarkdownWriter(output_dir=output_dir)
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
 
-    sub_index_path = os.path.join(sub_folder, f"{sub_subject or 'General'}.md")
-    sub_index_entries = [f"- [{source_title}]({safe_title}.md)\n"]
-    update_index(sub_index_path, sub_index_entries, f"# {sub_subject or 'General'} Feeds", [subject, sub_subject])
-
-    subject_index_path = os.path.join(output_dir, subject, f"{subject}.md")
-    subject_index_entry = [f"- [{sub_subject or 'General'}]({sub_subject.replace(' ', '_') if sub_subject else 'General'}.md)\n"]
-    update_index(subject_index_path, subject_index_entry, f"# {subject} Index", [subject])
-
-    new_total = sum(len(v) for v in filtered_by_category.values())
-    logging.info(f"{new_total} new entries for '{subject}/{sub_subject or 'General'}/{source_title}'")
+    def write_subject_note(self, subject, sub_subject, source_title, categorized_entries):
+        # Just delegate — no business logic here
+        return self.writer.write_subject_note(subject, sub_subject, source_title, categorized_entries)
